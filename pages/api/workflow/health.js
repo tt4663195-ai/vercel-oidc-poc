@@ -1,16 +1,17 @@
 export default async function handler(req, res) {
-    // Ye code poore system environment ko scan karega
-    const allEnv = process.env;
-    const foundKeys = Object.keys(allEnv).filter(k => 
-        k.includes('OIDC') || k.includes('VERCEL_URL') || k.includes('AUTH')
-    );
+    // 1. Headers se token nikalne ki koshish (Documentation ke mutabiq)
+    const headerToken = req.headers['x-vercel-oidc-token'];
+    
+    // 2. Environment se token check karna
+    const envToken = process.env.VERCEL_OIDC_TOKEN;
+
+    const finalToken = headerToken || envToken || "Not Found";
 
     res.status(200).json({
-        status: "Scanning Environment",
-        vulnerable: process.env.VERCEL_OIDC_TOKEN ? "YES" : "NO",
-        token_found: process.env.VERCEL_OIDC_TOKEN ? "EXPOSED" : "HIDDEN",
-        detected_vars: foundKeys,
-        // Sirf debugging ke liye
-        hint: "Check if OIDC is enabled in Project Settings > Security"
+        vulnerable: finalToken !== "Not Found" ? "YES" : "NO",
+        source: headerToken ? "HTTP_HEADER" : (envToken ? "ENV_VARIABLE" : "NONE"),
+        token_preview: finalToken !== "Not Found" ? `${finalToken.substring(0, 20)}...` : "null",
+        all_headers: Object.keys(req.headers).filter(h => h.includes('vercel')), // Tennyson ko proof dikhane ke liye
+        note: "Checking both x-vercel-oidc-token header and environment variables."
     });
 }
